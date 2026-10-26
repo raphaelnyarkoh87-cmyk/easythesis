@@ -5,9 +5,9 @@ import { useState } from "react";
 import { FileDrop } from "@/components/file-drop";
 import { Button, ButtonLink, Field, inputClass } from "@/components/ui";
 import { APPROACHES, DISCIPLINES, LEVELS, REFERENCING_STYLES } from "@/lib/academic";
-import { createProject, useAccount } from "@/lib/demo-store";
+import { Loading } from "@/components/app-shell";
+import { createProject, uploadDocuments, useAccount } from "@/lib/store";
 import { PLANS } from "@/lib/plans";
-import type { UploadedDocument } from "@/lib/types";
 
 export default function NewThesisPage() {
   const router = useRouter();
@@ -19,32 +19,50 @@ export default function NewThesisPage() {
   const [referencing, setReferencing] = useState<string>(REFERENCING_STYLES[0]);
   const [institution, setInstitution] = useState("");
   const [objectives, setObjectives] = useState("");
-  const [documents, setDocuments] = useState<UploadedDocument[]>([]);
+  const [files, setFiles] = useState<{ id: string; file: File }[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
 
-  if (!account) return null;
+  if (!account) return <Loading />;
   const uploadLimit = PLANS[account.plan].limits.uploads;
+  const remaining =
+    uploadLimit === null ? null : Math.max(0, uploadLimit - account.usage.uploads - files.length);
 
-  function submit(e: React.FormEvent) {
+  async function submit(e: React.FormEvent) {
     e.preventDefault();
+    if (busy) return;
     if (title.trim().length < 10) return setError("Enter your working title. It needs at least 10 characters.");
     if (!discipline) return setError("Choose your discipline.");
     if (objectives.trim().length < 20)
       return setError("Add your research objectives. They guide the literature search and every chapter.");
     setError(null);
-    const project = createProject(
-      {
-        title: title.trim(),
-        discipline,
-        level,
-        approach,
-        referencing,
-        institution: institution.trim() || undefined,
-        objectives: objectives.trim(),
-      },
-      documents,
-    );
-    router.push(`/app/thesis/${project.id}`);
+    setBusy(true);
+    const created = await createProject({
+      title: title.trim(),
+      discipline,
+      level,
+      approach,
+      referencing,
+      institution: institution.trim() || undefined,
+      objectives: objectives.trim(),
+    });
+    if (!created.id) {
+      setBusy(false);
+      return setError(created.error);
+    }
+    if (files.length) {
+      const res = await uploadDocuments(
+        created.id,
+        files.map((f) => f.file),
+        "proposal",
+      );
+      if (res.errors.length) {
+        // The thesis exists; show it with a note rather than losing the work.
+        router.push(`/app/thesis/${created.id}?upload=failed`);
+        return;
+      }
+    }
+    router.push(`/app/thesis/${created.id}`);
   }
 
   return (
@@ -151,12 +169,17 @@ export default function NewThesisPage() {
           </p>
           <div className="pt-1">
             <FileDrop
-              kind="proposal"
               accept=".pdf,.docx,.doc,.txt"
               acceptLabel="PDF, Word or text"
-              files={documents}
-              onChange={setDocuments}
-              maxFiles={uploadLimit}
+              files={files.map((f) => ({ id: f.id, name: f.file.name, sizeBytes: f.file.size }))}
+              onAdd={(added) =>
+                setFiles((prev) => [
+                  ...prev,
+                  ...added.map((file) => ({ id: crypto.randomUUID(), file })),
+                ])
+              }
+              onRemove={(id) => setFiles((prev) => prev.filter((f) => f.id !== id))}
+              remaining={remaining}
             />
           </div>
         </div>
@@ -168,7 +191,9 @@ export default function NewThesisPage() {
         ) : null}
 
         <div className="flex flex-wrap gap-3 border-t border-line pt-7">
-          <Button type="submit">Create thesis</Button>
+          <Button type="submit" disabled={busy}>
+            {busy ? (files.length ? "Creating and uploading…" : "Creating…") : "Create thesis"}
+          </Button>
           <ButtonLink href="/app" variant="quiet">
             Cancel
           </ButtonLink>

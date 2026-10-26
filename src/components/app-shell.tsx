@@ -2,21 +2,22 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useSyncExternalStore } from "react";
+import { Loader2 } from "lucide-react";
 import { Logo } from "./brand";
 import { ButtonLink, buttonClass } from "./ui";
-import { signOut, useAccount } from "@/lib/demo-store";
+import { signOut, useAccount } from "@/lib/store";
 
-const noop = () => () => {};
-
-/** True after the first client render, so stored data is never read on the server. */
-export function useHydrated() {
-  return useSyncExternalStore(noop, () => true, () => false);
+export function Loading({ label = "Loading" }: { label?: string }) {
+  return (
+    <div role="status" className="flex items-center justify-center gap-2 py-24 text-muted">
+      <Loader2 className="h-5 w-5 animate-spin text-leaf" aria-hidden="true" />
+      {label}…
+    </div>
+  );
 }
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const account = useAccount();
-  const hydrated = useHydrated();
   const pathname = usePathname();
   const router = useRouter();
   const publicPath = pathname === "/app/thesis/example";
@@ -26,7 +27,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <header className="sticky top-0 z-30 border-b border-line bg-white">
         <div className="flex h-16 items-center justify-between gap-3 px-4 sm:px-6">
           <Logo href={account ? "/app" : "/"} />
-          {hydrated && account ? (
+          {account ? (
             <div className="flex items-center gap-2 sm:gap-3">
               {account.plan === "premium" ? (
                 <span className="hidden rounded-full bg-mint px-3 py-1 text-sm font-medium text-leaf sm:inline">
@@ -47,15 +48,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <button
                 type="button"
                 className={buttonClass("quiet", "sm")}
-                onClick={() => {
-                  signOut();
-                  router.push("/");
+                onClick={async () => {
+                  await signOut();
+                  router.replace("/");
+                  router.refresh();
                 }}
               >
                 Sign out
               </button>
             </div>
-          ) : hydrated ? (
+          ) : account === null ? (
             <div className="flex items-center gap-2">
               <Link href="/signin" className="rounded-lg px-3 py-2 text-sm text-forest hover:bg-mint">
                 Sign in
@@ -67,14 +69,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           ) : null}
         </div>
       </header>
-      {!hydrated ? null : account || publicPath ? (
+      {account === undefined && !publicPath ? (
+        <Loading />
+      ) : account || publicPath ? (
         children
       ) : (
         <main className="mx-auto max-w-md px-4 py-24 text-center">
           <h1 className="font-serif text-3xl font-semibold text-forest">Sign in to continue</h1>
           <p className="mt-3 text-muted">Your thesis projects are kept in your account.</p>
           <div className="mt-8 flex justify-center gap-3">
-            <ButtonLink href="/signin">Sign in</ButtonLink>
+            <ButtonLink href={`/signin?next=${encodeURIComponent(pathname)}`}>Sign in</ButtonLink>
             <ButtonLink href="/signup" variant="secondary">
               Create account
             </ButtonLink>

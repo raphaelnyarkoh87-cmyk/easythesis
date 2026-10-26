@@ -4,7 +4,8 @@ import Link from "next/link";
 import { FilePlus2 } from "lucide-react";
 import { ButtonLink } from "@/components/ui";
 import { CHAPTERS } from "@/lib/academic";
-import { exampleProject, useAccount, useProjects } from "@/lib/demo-store";
+import { Loading } from "@/components/app-shell";
+import { exampleProject, useAccount, useProjects } from "@/lib/store";
 import { PLANS } from "@/lib/plans";
 import type { Project } from "@/lib/types";
 
@@ -69,7 +70,7 @@ function ProjectRow({ project }: { project: Project }) {
 export default function Dashboard() {
   const account = useAccount();
   const projects = useProjects();
-  if (!account) return null;
+  if (!account || projects === undefined) return <Loading />;
   const plan = PLANS[account.plan];
   const atProjectLimit = plan.limits.projects !== null && projects.length >= plan.limits.projects;
 
@@ -142,6 +143,7 @@ export default function Dashboard() {
             used={account.usage.literatureSearches}
             limit={plan.limits.literatureSearchesPerMonth}
           />
+          <Meter label="Document uploads" used={account.usage.uploads} limit={plan.limits.uploads} />
           {account.plan === "free" ? (
             <ButtonLink href="/app/upgrade" className="w-full">
               Get Premium

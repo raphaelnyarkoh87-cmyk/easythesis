@@ -32,6 +32,7 @@ export interface UploadedDocument {
   sizeBytes: number;
   kind: "proposal" | "data" | "literature" | "other";
   uploadedAt: string;
+  storagePath?: string;
 }
 
 export interface Project {
@@ -52,11 +53,14 @@ export interface Project {
 }
 
 export interface Account {
+  id: string;
   name: string;
   email: string;
   plan: PlanId;
   premiumUntil?: string;
   usage: {
+    projects: number;
+    uploads: number;
     chapterDrafts: number;
     literatureSearches: number;
   };

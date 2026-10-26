@@ -1,8 +1,7 @@
 "use client";
 
-import { FileText, Upload, X } from "lucide-react";
-import { useId, useRef, useState } from "react";
-import type { UploadedDocument } from "@/lib/types";
+import { FileText, Loader2, Upload, X } from "lucide-react";
+import { useId, useState } from "react";
 
 const MAX_BYTES = 20 * 1024 * 1024;
 
@@ -11,53 +10,64 @@ export function formatSize(bytes: number) {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+export interface ListedFile {
+  id: string;
+  name: string;
+  sizeBytes: number;
+}
+
+/**
+ * File picker with drag and drop. It checks size and the plan's
+ * remaining uploads, then hands the files to `onAdd`.
+ */
 export function FileDrop({
-  kind,
   accept,
   acceptLabel,
   files,
-  onChange,
-  maxFiles,
+  onAdd,
+  onRemove,
+  remaining,
+  busy = false,
+  error,
   label = "Choose files",
 }: {
-  kind: UploadedDocument["kind"];
   accept: string;
   acceptLabel: string;
-  files: UploadedDocument[];
-  onChange: (files: UploadedDocument[]) => void;
-  maxFiles: number | null;
+  files: ListedFile[];
+  onAdd: (files: File[]) => void;
+  onRemove?: (id: string) => void;
+  /** Uploads left on the user's plan; null means unlimited. */
+  remaining: number | null;
+  busy?: boolean;
+  error?: string | null;
   label?: string;
 }) {
   const inputId = useId();
-  const inputRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [localError, setLocalError] = useState<string | null>(null);
 
   function add(list: FileList | null) {
-    if (!list) return;
+    if (!list || busy) return;
     const incoming = Array.from(list);
+    if (incoming.length === 0) return;
     const tooBig = incoming.find((f) => f.size > MAX_BYTES);
     if (tooBig) {
-      setError(`${tooBig.name} is larger than 20 MB. Compress it or split it into parts.`);
+      setLocalError(`${tooBig.name} is larger than 20 MB. Compress it or split it into parts.`);
       return;
     }
-    if (maxFiles !== null && files.length + incoming.length > maxFiles) {
-      setError(`Your plan allows ${maxFiles} uploads. Remove a file or get Premium for unlimited uploads.`);
+    if (remaining !== null && incoming.length > remaining) {
+      setLocalError(
+        remaining === 0
+          ? "You have used all the uploads in the Free plan. Remove a file or get Premium for unlimited uploads."
+          : `You can upload ${remaining} more ${remaining === 1 ? "file" : "files"} on the Free plan.`,
+      );
       return;
     }
-    setError(null);
-    // Stage 3: upload to Supabase Storage. For now only file details are kept.
-    onChange([
-      ...files,
-      ...incoming.map((f) => ({
-        id: crypto.randomUUID().slice(0, 8),
-        name: f.name,
-        sizeBytes: f.size,
-        kind,
-        uploadedAt: new Date().toISOString(),
-      })),
-    ]);
+    setLocalError(null);
+    onAdd(incoming);
   }
+
+  const shownError = localError ?? error;
 
   return (
     <div>
@@ -73,29 +83,36 @@ export function FileDrop({
           setDragging(false);
           add(e.dataTransfer.files);
         }}
+        aria-busy={busy}
         className={`flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed px-6 py-8 text-center transition-colors ${
           dragging ? "border-leaf bg-mint" : "border-line hover:border-leaf hover:bg-mint/60"
-        }`}
+        } ${busy ? "pointer-events-none opacity-70" : ""}`}
       >
-        <Upload className="h-6 w-6 text-leaf" aria-hidden="true" />
-        <span className="font-medium text-forest">{label}</span>
-        <span className="text-sm text-muted">or drag them here. {acceptLabel}, up to 20 MB each.</span>
+        {busy ? (
+          <Loader2 className="h-6 w-6 animate-spin text-leaf" aria-hidden="true" />
+        ) : (
+          <Upload className="h-6 w-6 text-leaf" aria-hidden="true" />
+        )}
+        <span className="font-medium text-forest">{busy ? "Uploading…" : label}</span>
+        <span className="text-sm text-muted">
+          or drag them here. {acceptLabel}, up to 20 MB each.
+        </span>
         <input
-          ref={inputRef}
           id={inputId}
           type="file"
           multiple
           accept={accept}
           className="sr-only"
+          disabled={busy}
           onChange={(e) => {
             add(e.target.files);
             e.target.value = "";
           }}
         />
       </label>
-      {error ? (
+      {shownError ? (
         <p role="alert" className="mt-2 text-sm text-danger">
-          {error}
+          {shownError}
         </p>
       ) : null}
       {files.length > 0 ? (
@@ -108,14 +125,16 @@ export function FileDrop({
               <FileText className="h-4 w-4 shrink-0 text-leaf" aria-hidden="true" />
               <span className="min-w-0 flex-1 truncate">{f.name}</span>
               <span className="text-muted">{formatSize(f.sizeBytes)}</span>
-              <button
-                type="button"
-                onClick={() => onChange(files.filter((x) => x.id !== f.id))}
-                className="rounded p-1 text-muted hover:bg-mint hover:text-forest"
-                aria-label={`Remove ${f.name}`}
-              >
-                <X className="h-4 w-4" />
-              </button>
+              {onRemove ? (
+                <button
+                  type="button"
+                  onClick={() => onRemove(f.id)}
+                  className="rounded p-1 text-muted hover:bg-mint hover:text-forest"
+                  aria-label={`Remove ${f.name}`}
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              ) : null}
             </li>
           ))}
         </ul>

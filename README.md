@@ -7,9 +7,9 @@ Thesis and dissertation drafting (Chapters 1 to 5) for the social sciences and h
 | Stage | What it adds | Status |
 |---|---|---|
 | 1 | Feasibility research and plan | Done |
-| 2 | Interface: landing, pricing, sign in, dashboard, new thesis, chapter workspace, upgrade | Done (preview data stored in the browser) |
-| 3 | Supabase: real accounts, database, document storage, plan limits enforced on the server | Next |
-| 4 | Literature engine: OpenAlex, Semantic Scholar, Crossref verification (Consensus later) | |
+| 2 | Interface: landing, pricing, sign in, dashboard, new thesis, chapter workspace, upgrade | Done |
+| 3 | Supabase: real accounts, database, document storage, plan limits enforced in the database | Done |
+| 4 | Literature engine: OpenAlex, Semantic Scholar, Crossref verification (Consensus later) | Next |
 | 5 | Writing engine: chapter drafting grounded only in retrieved sources and the student's own data | |
 | 6 | Paystack: MTN MoMo, Telecel Cash, AirtelTigo Money, card and bank; 30-day Premium pass | |
 | 7 | Word export, terms, privacy policy, launch | |
@@ -19,9 +19,15 @@ Thesis and dissertation drafting (Chapters 1 to 5) for the social sciences and h
 - `src/lib/plans.ts`: prices and free/premium limits. Change the numbers here.
 - `src/lib/academic.ts`: disciplines, levels, referencing styles and the chapter structure.
 - `src/lib/example.ts`: the example thesis. Every source in it is a real paper with a real DOI.
-- `src/lib/demo-store.ts`: temporary browser storage, replaced by Supabase in Stage 3.
+- `src/lib/store.ts`: reading and writing data in Supabase (accounts, projects, uploads).
+- `src/lib/supabase/`: Supabase connection settings.
+- `supabase/migrations/`: database tables and security rules. Run new files in Supabase's SQL Editor.
 - `src/app/`: pages. `src/app/app/` is the signed-in area.
 - `src/components/`: shared interface pieces.
+
+## Testing Premium before payments exist
+
+In Supabase, open Table Editor -> profiles, find your row, set `plan` to `premium` and `premium_until` to a future date.
 
 ## Run locally
 

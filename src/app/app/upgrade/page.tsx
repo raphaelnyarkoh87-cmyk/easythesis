@@ -1,10 +1,10 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Building2, CreditCard, Info, ShieldCheck, Smartphone } from "lucide-react";
 import { Button, Field, inputClass } from "@/components/ui";
-import { activatePremium, useAccount } from "@/lib/demo-store";
+import { Loading } from "@/components/app-shell";
+import { useAccount } from "@/lib/store";
 import { formatGhs, PAYMENT_METHODS, PLANS, type PaymentMethodId } from "@/lib/plans";
 
 const ICONS = { mobile_money: Smartphone, card: CreditCard, bank: Building2 } as const;
@@ -15,7 +15,6 @@ function validGhanaNumber(raw: string) {
 }
 
 export default function UpgradePage() {
-  const router = useRouter();
   const account = useAccount();
   const premium = PLANS.premium;
   const [method, setMethod] = useState<PaymentMethodId>("mtn");
@@ -23,7 +22,7 @@ export default function UpgradePage() {
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
-  if (!account) return null;
+  if (!account) return <Loading />;
   const selected = PAYMENT_METHODS.find((m) => m.id === method)!;
   const mobile = selected.kind === "mobile_money";
 
@@ -123,22 +122,10 @@ export default function UpgradePage() {
           ) : null}
 
           {pending ? (
-            <div className="space-y-3">
-              <p role="status" className="flex gap-2 rounded-lg bg-mint px-4 py-3 text-sm text-forest">
-                <Info className="mt-0.5 h-4 w-4 shrink-0 text-leaf" aria-hidden="true" />
-                Payments switch on in Stage 6, when Paystack is connected. No money was taken.
-              </p>
-              <button
-                type="button"
-                className="text-sm font-medium text-leaf underline underline-offset-4"
-                onClick={() => {
-                  activatePremium(premium.periodDays ?? 30);
-                  router.push("/app");
-                }}
-              >
-                Preview only: unlock Premium in this browser
-              </button>
-            </div>
+            <p role="status" className="flex gap-2 rounded-lg bg-mint px-4 py-3 text-sm text-forest">
+              <Info className="mt-0.5 h-4 w-4 shrink-0 text-leaf" aria-hidden="true" />
+              Payments switch on in Stage 6, when Paystack is connected. No money was taken.
+            </p>
           ) : null}
         </div>
 

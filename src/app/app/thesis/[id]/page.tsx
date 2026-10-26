@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { Info, Lock, Search, Sparkles } from "lucide-react";
 import { CitedProse } from "@/components/cited-prose";
@@ -9,9 +9,10 @@ import { FileDrop } from "@/components/file-drop";
 import { SourceCard } from "@/components/source-card";
 import { Button, ButtonLink, inputClass } from "@/components/ui";
 import { CHAPTERS } from "@/lib/academic";
-import { updateProject, useAccount, useProject } from "@/lib/demo-store";
+import { Loading } from "@/components/app-shell";
+import { deleteDocument, uploadDocuments, useAccount, useProject } from "@/lib/store";
 import { PLANS } from "@/lib/plans";
-import type { Project } from "@/lib/types";
+import type { UploadedDocument } from "@/lib/types";
 
 const PENDING = {
   draft:
@@ -37,6 +38,15 @@ export default function ThesisWorkspace() {
   const [activeSource, setActiveSource] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [query, setQuery] = useState("");
+  const params = useSearchParams();
+  const [uploading, setUploading] = useState<UploadedDocument["kind"] | null>(null);
+  const [uploadError, setUploadError] = useState<string | null>(
+    params.get("upload") === "failed"
+      ? "Your thesis was created, but some files did not upload. Add them again below."
+      : null,
+  );
+
+  if (project === undefined) return <Loading label="Opening your thesis" />;
 
   if (!project) {
     return (
@@ -67,12 +77,30 @@ export default function ThesisWorkspace() {
     return st === "drafted" ? "Drafted" : st === "outlined" ? "Outlined" : "Not started";
   }
 
-  function setDataFiles(files: Project["documents"]) {
-    updateProject(project!.id, (p) => ({
-      ...p,
-      documents: [...p.documents.filter((d) => d.kind !== "data"), ...files],
-    }));
+  const otherFiles = project.documents.filter((d) => d.kind !== "data");
+  const uploadsLeft =
+    plan.limits.uploads === null
+      ? null
+      : Math.max(0, plan.limits.uploads - (account?.usage.uploads ?? 0));
+
+  async function addFiles(files: File[], kind: UploadedDocument["kind"]) {
+    setUploading(kind);
+    setUploadError(null);
+    const res = await uploadDocuments(project!.id, files, kind);
+    setUploading(null);
+    if (res.errors.length) setUploadError(res.errors.join(" "));
   }
+
+  async function removeFile(id: string) {
+    const doc = project!.documents.find((d) => d.id === id);
+    if (!doc) return;
+    if (!window.confirm(`Remove ${doc.name}? This deletes the file from EasyThesis.`)) return;
+    const res = await deleteDocument(doc);
+    if (res.error) setUploadError(res.error);
+  }
+
+  const listed = (docs: UploadedDocument[]) =>
+    docs.map((d) => ({ id: d.id, name: d.name, sizeBytes: d.sizeBytes }));
 
   return (
     <main>
@@ -178,12 +206,14 @@ export default function ThesisWorkspace() {
               {readOnly ? null : (
                 <div className="mt-5">
                   <FileDrop
-                    kind="data"
                     accept=".xlsx,.xls,.csv,.sav,.dta,.pdf,.docx,.txt"
                     acceptLabel="Excel, CSV, SPSS, Stata, PDF, Word or text"
-                    files={dataFiles}
-                    onChange={setDataFiles}
-                    maxFiles={plan.limits.uploads}
+                    files={listed(dataFiles)}
+                    onAdd={(files) => addFiles(files, "data")}
+                    onRemove={removeFile}
+                    remaining={uploadsLeft}
+                    busy={uploading === "data"}
+                    error={uploadError}
                     label="Upload your data"
                   />
                 </div>
@@ -281,6 +311,31 @@ export default function ThesisWorkspace() {
                 </li>
               ))}
             </ul>
+          )}
+
+          {readOnly ? null : (
+            <section aria-labelledby="files-heading" className="mt-10">
+              <h2 id="files-heading" className="font-semibold text-forest">
+                Your files
+              </h2>
+              <p className="mt-1 text-sm text-muted">
+                Your proposal, supervisor comments or papers you already have. EasyThesis reads
+                them before drafting.
+              </p>
+              <div className="mt-3">
+                <FileDrop
+                  accept=".pdf,.docx,.doc,.txt"
+                  acceptLabel="PDF, Word or text"
+                  files={listed(otherFiles)}
+                  onAdd={(files) => addFiles(files, "proposal")}
+                  onRemove={removeFile}
+                  remaining={uploadsLeft}
+                  busy={uploading === "proposal"}
+                  error={dataLocked ? null : uploadError}
+                  label="Add files"
+                />
+              </div>
+            </section>
           )}
         </aside>
       </div>
