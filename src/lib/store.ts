@@ -351,3 +351,64 @@ export async function deleteDocument(doc: UploadedDocument) {
   invalidate();
   return { error: error ? friendly(error.message) : null };
 }
+
+/* ------------------------------------------------------------------ */
+/* Literature (server routes do the searching and checking)             */
+/* ------------------------------------------------------------------ */
+
+export interface SearchResult {
+  title: string;
+  authors: string[];
+  year: number | null;
+  venue: string | null;
+  volume?: string | null;
+  issue?: string | null;
+  pages?: string | null;
+  doi: string | null;
+  abstract: string | null;
+  citedBy: number | null;
+  openAccessUrl: string | null;
+  retrievedFrom: "OpenAlex" | "Semantic Scholar";
+  alreadyAdded: boolean;
+}
+
+async function postJson<T>(url: string, body: unknown): Promise<{ data: T | null; error: string | null; upgrade?: boolean }> {
+  try {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok) return { data: null, error: json.error ?? "Something went wrong. Try again.", upgrade: !!json.upgrade };
+    return { data: json as T, error: null };
+  } catch {
+    return { data: null, error: friendly("failed to fetch") };
+  }
+}
+
+export async function searchLiterature(projectId: string, query: string, fromYear?: number) {
+  const res = await postJson<{
+    results: SearchResult[];
+    searched: string[];
+    unavailable: string[];
+    remaining: number | null;
+  }>("/api/literature/search", { projectId, query, fromYear });
+  invalidate(); // usage count changed
+  return res;
+}
+
+export async function addSource(projectId: string, candidate: SearchResult) {
+  const res = await postJson<{ verification: Source["verification"] }>("/api/literature/add", {
+    projectId,
+    candidate,
+  });
+  if (!res.error) invalidate();
+  return res;
+}
+
+export async function removeSource(sourceId: string) {
+  const { error } = await supabaseBrowser().from("sources").delete().eq("id", sourceId);
+  invalidate();
+  return { error: error ? friendly(error.message) : null };
+}

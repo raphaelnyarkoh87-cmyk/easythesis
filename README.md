@@ -9,8 +9,8 @@ Thesis and dissertation drafting (Chapters 1 to 5) for the social sciences and h
 | 1 | Feasibility research and plan | Done |
 | 2 | Interface: landing, pricing, sign in, dashboard, new thesis, chapter workspace, upgrade | Done |
 | 3 | Supabase: real accounts, database, document storage, plan limits enforced in the database | Done |
-| 4 | Literature engine: OpenAlex, Semantic Scholar, Crossref verification (Consensus later) | Next |
-| 5 | Writing engine: chapter drafting grounded only in retrieved sources and the student's own data | |
+| 4 | Literature engine: OpenAlex, Semantic Scholar, Crossref verification (Consensus later) | Done |
+| 5 | Writing engine: chapter drafting grounded only in retrieved sources and the student's own data | Next |
 | 6 | Paystack: MTN MoMo, Telecel Cash, AirtelTigo Money, card and bank; 30-day Premium pass | |
 | 7 | Word export, terms, privacy policy, launch | |
 
@@ -21,6 +21,9 @@ Thesis and dissertation drafting (Chapters 1 to 5) for the social sciences and h
 - `src/lib/example.ts`: the example thesis. Every source in it is a real paper with a real DOI.
 - `src/lib/store.ts`: reading and writing data in Supabase (accounts, projects, uploads).
 - `src/lib/supabase/`: Supabase connection settings.
+- `src/lib/literature/`: OpenAlex and Semantic Scholar search, Crossref DOI checks.
+- `src/lib/server/guard.ts`: sign-in, project ownership and plan-limit checks for server routes.
+- `src/app/api/`: server routes.
 - `supabase/migrations/`: database tables and security rules. Run new files in Supabase's SQL Editor.
 - `src/app/`: pages. `src/app/app/` is the signed-in area.
 - `src/components/`: shared interface pieces.

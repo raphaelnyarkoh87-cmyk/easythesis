@@ -3,22 +3,21 @@
 import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
 import { useState } from "react";
-import { Info, Lock, Search, Sparkles } from "lucide-react";
+import { Info, Lock, Sparkles } from "lucide-react";
 import { CitedProse } from "@/components/cited-prose";
 import { FileDrop } from "@/components/file-drop";
 import { SourceCard } from "@/components/source-card";
-import { Button, ButtonLink, inputClass } from "@/components/ui";
+import { Button, ButtonLink } from "@/components/ui";
 import { CHAPTERS } from "@/lib/academic";
 import { Loading } from "@/components/app-shell";
-import { deleteDocument, uploadDocuments, useAccount, useProject } from "@/lib/store";
+import { LiteratureSearch } from "@/components/literature-search";
+import { deleteDocument, removeSource, uploadDocuments, useAccount, useProject } from "@/lib/store";
 import { PLANS } from "@/lib/plans";
 import type { UploadedDocument } from "@/lib/types";
 
 const PENDING = {
   draft:
     "Drafting switches on in Stage 5, when the writing engine is connected. The layout and controls here are final.",
-  search:
-    "Literature search switches on in Stage 4, when OpenAlex, Semantic Scholar and Crossref are connected.",
 };
 
 function Notice({ children }: { children: React.ReactNode }) {
@@ -37,7 +36,6 @@ export default function ThesisWorkspace() {
   const [chapterNo, setChapterNo] = useState(1);
   const [activeSource, setActiveSource] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
-  const [query, setQuery] = useState("");
   const params = useSearchParams();
   const [uploading, setUploading] = useState<UploadedDocument["kind"] | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(
@@ -77,6 +75,7 @@ export default function ThesisWorkspace() {
     return st === "drafted" ? "Drafted" : st === "outlined" ? "Outlined" : "Not started";
   }
 
+  const suggestion = project.title.split(/\s+/).slice(0, 8).join(" ");
   const otherFiles = project.documents.filter((d) => d.kind !== "data");
   const uploadsLeft =
     plan.limits.uploads === null
@@ -260,54 +259,55 @@ export default function ThesisWorkspace() {
         </section>
 
         {/* Sources */}
-        <aside aria-labelledby="sources-heading" className="lg:sticky lg:top-24 lg:h-fit">
+        <aside aria-labelledby="sources-heading" className="min-w-0">
           <div className="flex items-baseline justify-between">
             <h2 id="sources-heading" className="font-semibold text-forest">
-              Sources
+              Literature
             </h2>
             <p className="text-sm text-muted">
               {verified} of {project.sources.length} verified
             </p>
           </div>
           {readOnly ? null : (
-            <form
-              className="mt-3 flex gap-2"
-              onSubmit={(e) => {
-                e.preventDefault();
-                setNotice(PENDING.search);
-              }}
-            >
-              <label htmlFor="lit-search" className="sr-only">
-                Search for literature
-              </label>
-              <input
-                id="lit-search"
-                className={`${inputClass} py-2 text-sm`}
-                placeholder="Search published literature"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
+            <div className="mt-3">
+              <LiteratureSearch
+                projectId={project.id}
+                suggestion={suggestion}
+                remainingSearches={
+                  plan.limits.literatureSearchesPerMonth === null
+                    ? null
+                    : Math.max(
+                        0,
+                        plan.limits.literatureSearchesPerMonth - (account?.usage.literatureSearches ?? 0),
+                      )
+                }
               />
-              <Button size="sm" type="submit" aria-label="Search">
-                <Search className="h-4 w-4" aria-hidden="true" />
-              </Button>
-            </form>
+            </div>
           )}
           {project.sources.length === 0 ? (
             <p className="mt-4 rounded-xl border border-dashed border-line px-4 py-6 text-sm text-muted">
-              No sources yet. Search above, and the papers you keep appear here. Drafts can cite
-              only these papers.
+              No sources yet. Search above and add the papers you want to use. Drafts can cite
+              only papers in this list.
             </p>
           ) : (
             <ul className="mt-4 max-h-[70vh] space-y-3 overflow-y-auto pr-1">
               {project.sources.map((s) => (
                 <li key={s.id}>
-                  <button
-                    type="button"
-                    onClick={() => setActiveSource(s.id)}
-                    className="block w-full text-left"
-                  >
-                    <SourceCard source={s} style={project.referencing} active={activeSource === s.id} />
-                  </button>
+                  <SourceCard
+                    source={s}
+                    style={project.referencing}
+                    active={activeSource === s.id}
+                    onSelect={() => setActiveSource(s.id)}
+                    onRemove={
+                      readOnly
+                        ? undefined
+                        : async () => {
+                            if (!window.confirm("Remove this paper from your sources?")) return;
+                            const res = await removeSource(s.id);
+                            if (res.error) setNotice(res.error);
+                          }
+                    }
+                  />
                 </li>
               ))}
             </ul>
