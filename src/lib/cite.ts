@@ -36,9 +36,11 @@ export function referenceEntry(source: Source, style: string) {
 export type ProseToken =
   | { type: "text"; value: string }
   | { type: "cite"; sourceId: string }
-  | { type: "unsupported" };
+  | { type: "unsupported" }
+  | { type: "data" }
+  | { type: "add"; what: string };
 
-/** Splits draft text on [[source-id]] and [[?]] markers. */
+/** Splits draft text on [[source-id]], [[?]], [[data]] and [[add:...]] markers. */
 export function tokenize(paragraph: string): ProseToken[] {
   const tokens: ProseToken[] = [];
   const re = /\s*\[\[([^\]]+)\]\]/g;
@@ -46,7 +48,11 @@ export function tokenize(paragraph: string): ProseToken[] {
   let m: RegExpExecArray | null;
   while ((m = re.exec(paragraph))) {
     if (m.index > last) tokens.push({ type: "text", value: paragraph.slice(last, m.index) });
-    tokens.push(m[1] === "?" ? { type: "unsupported" } : { type: "cite", sourceId: m[1] });
+    const v = m[1];
+    if (v === "?") tokens.push({ type: "unsupported" });
+    else if (v === "data") tokens.push({ type: "data" });
+    else if (v.startsWith("add:")) tokens.push({ type: "add", what: v.slice(4) });
+    else tokens.push({ type: "cite", sourceId: v });
     last = m.index + m[0].length;
   }
   if (last < paragraph.length) tokens.push({ type: "text", value: paragraph.slice(last) });

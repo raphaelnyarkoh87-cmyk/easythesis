@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
-import { useState } from "react";
-import { Info, Lock, Sparkles } from "lucide-react";
+import { useRef, useState } from "react";
+import { Info, Loader2, Lock, RefreshCw, Sparkles } from "lucide-react";
 import { CitedProse } from "@/components/cited-prose";
 import { FileDrop } from "@/components/file-drop";
 import { SourceCard } from "@/components/source-card";
@@ -11,14 +11,16 @@ import { Button, ButtonLink } from "@/components/ui";
 import { CHAPTERS } from "@/lib/academic";
 import { Loading } from "@/components/app-shell";
 import { LiteratureSearch } from "@/components/literature-search";
-import { deleteDocument, removeSource, uploadDocuments, useAccount, useProject } from "@/lib/store";
+import {
+  deleteDocument,
+  draftSection,
+  removeSource,
+  uploadDocuments,
+  useAccount,
+  useProject,
+} from "@/lib/store";
 import { PLANS } from "@/lib/plans";
 import type { UploadedDocument } from "@/lib/types";
-
-const PENDING = {
-  draft:
-    "Drafting switches on in Stage 5, when the writing engine is connected. The layout and controls here are final.",
-};
 
 function Notice({ children }: { children: React.ReactNode }) {
   return (
@@ -36,6 +38,11 @@ export default function ThesisWorkspace() {
   const [chapterNo, setChapterNo] = useState(1);
   const [activeSource, setActiveSource] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [draftError, setDraftError] = useState<{ text: string; upgrade?: boolean } | null>(null);
+  // A ref, so every section in a whole-chapter run sees the session id at once.
+  const runs = useRef<Record<number, number>>({});
+  const [drafting, setDrafting] = useState<{ chapter: number; section: string; index: number; total: number } | null>(null);
+  const [sectionNotes, setSectionNotes] = useState<Record<string, string>>({});
   const params = useSearchParams();
   const [uploading, setUploading] = useState<UploadedDocument["kind"] | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(
@@ -97,6 +104,38 @@ export default function ThesisWorkspace() {
     const res = await deleteDocument(doc);
     if (res.error) setUploadError(res.error);
   }
+
+  async function draftOne(section: string, index = 1, total = 1): Promise<boolean> {
+    setDrafting({ chapter: spec.number, section, index, total });
+    setDraftError(null);
+    const res = await draftSection(project!.id, spec.number, section, runs.current[spec.number] ?? null);
+    setDrafting(null);
+    if (res.error || !res.data) {
+      setDraftError({ text: res.error ?? "Drafting failed. Try again.", upgrade: res.upgrade });
+      return false;
+    }
+    const d = res.data;
+    if (d.runId !== null) runs.current[spec.number] = d.runId;
+    const parts = [d.notes, ...d.skippedFiles].filter(Boolean);
+    if (d.stats.removedCitations > 0)
+      parts.push(
+        `${d.stats.removedCitations} citation${d.stats.removedCitations === 1 ? "" : "s"} to papers outside your source list ${d.stats.removedCitations === 1 ? "was" : "were"} removed and flagged.`,
+      );
+    setSectionNotes((n) => ({ ...n, [`${spec.number}:${section}`]: parts.join(" ") }));
+    return true;
+  }
+
+  async function draftChapter() {
+    const missing = spec.sections.filter((s) => !draft?.sections[s]?.length);
+    const targets = missing.length ? missing : spec.sections;
+    if (!missing.length && !window.confirm("Every section already has a draft. Redraft the whole chapter?")) return;
+    for (let i = 0; i < targets.length; i++) {
+      const ok = await draftOne(targets[i], i + 1, targets.length);
+      if (!ok) break;
+    }
+  }
+
+  const busy = drafting !== null;
 
   const listed = (docs: UploadedDocument[]) =>
     docs.map((d) => ({ id: d.id, name: d.name, sizeBytes: d.sizeBytes }));
@@ -168,14 +207,50 @@ export default function ThesisWorkspace() {
               <p className="mt-1 text-muted">{spec.purpose}</p>
             </div>
             {!readOnly && !planLocked && !dataLocked ? (
-              <Button size="sm" onClick={() => setNotice(PENDING.draft)}>
-                <Sparkles className="h-4 w-4" aria-hidden="true" />
-                Draft chapter
+              <Button size="sm" onClick={draftChapter} disabled={busy}>
+                {busy ? (
+                  <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                ) : (
+                  <Sparkles className="h-4 w-4" aria-hidden="true" />
+                )}
+                {busy && drafting?.total && drafting.total > 1
+                  ? `Drafting ${drafting.index} of ${drafting.total}…`
+                  : "Draft chapter"}
               </Button>
             ) : null}
           </div>
 
           {notice ? <div className="mt-4">{<Notice>{notice}</Notice>}</div> : null}
+          {draftError ? (
+            <p role="alert" className="mt-4 rounded-lg bg-warn-bg px-4 py-3 text-sm text-warn">
+              {draftError.text}{" "}
+              {draftError.upgrade ? (
+                <Link href="/app/upgrade" className="font-medium underline underline-offset-2">
+                  Get Premium
+                </Link>
+              ) : null}
+            </p>
+          ) : null}
+          {!readOnly && !planLocked && !dataLocked && spec.needsUserData ? (
+            <details className="mt-4 rounded-lg border border-line px-4 py-3 text-sm">
+              <summary className="cursor-pointer text-forest">
+                Written from your data: {dataFiles.map((f) => f.name).join(", ")}
+              </summary>
+              <div className="mt-3">
+                <FileDrop
+                  accept=".xlsx,.csv,.pdf,.docx,.txt"
+                  acceptLabel="Excel, CSV, PDF, Word or text"
+                  files={listed(dataFiles)}
+                  onAdd={(files) => addFiles(files, "data")}
+                  onRemove={removeFile}
+                  remaining={uploadsLeft}
+                  busy={uploading === "data"}
+                  error={uploadError}
+                  label="Add more data"
+                />
+              </div>
+            </details>
+          ) : null}
 
           {planLocked ? (
             <div className="mt-8 rounded-xl border border-line p-6">
@@ -222,12 +297,32 @@ export default function ThesisWorkspace() {
             <ol className="mt-8 space-y-8">
               {spec.sections.map((section, i) => {
                 const paragraphs = draft?.sections[section];
+                const isDrafting = drafting?.section === section && drafting.chapter === spec.number;
+                const note = sectionNotes[`${spec.number}:${section}`];
                 return (
-                  <li key={section}>
-                    <h3 className="font-serif text-lg font-semibold text-forest">
-                      {spec.number}.{i + 1} {section}
-                    </h3>
-                    {paragraphs?.length ? (
+                  <li key={section} aria-busy={isDrafting}>
+                    <div className="flex flex-wrap items-baseline justify-between gap-2">
+                      <h3 className="font-serif text-lg font-semibold text-forest">
+                        {spec.number}.{i + 1} {section}
+                      </h3>
+                      {paragraphs?.length && !readOnly ? (
+                        <button
+                          type="button"
+                          disabled={busy}
+                          onClick={() => draftOne(section)}
+                          className="inline-flex items-center gap-1 text-sm text-muted hover:text-forest disabled:opacity-50"
+                        >
+                          <RefreshCw className="h-3.5 w-3.5" aria-hidden="true" />
+                          Redraft
+                        </button>
+                      ) : null}
+                    </div>
+                    {isDrafting ? (
+                      <p role="status" className="mt-3 inline-flex items-center gap-2 text-sm text-leaf">
+                        <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                        Drafting from your sources…
+                      </p>
+                    ) : paragraphs?.length ? (
                       <div className="mt-3">
                         <CitedProse
                           paragraphs={paragraphs}
@@ -243,14 +338,21 @@ export default function ThesisWorkspace() {
                         {readOnly ? null : (
                           <button
                             type="button"
-                            onClick={() => setNotice(PENDING.draft)}
-                            className="text-sm font-medium text-leaf underline underline-offset-4"
+                            disabled={busy}
+                            onClick={() => draftOne(section)}
+                            className="text-sm font-medium text-leaf underline underline-offset-4 disabled:opacity-50"
                           >
                             Draft this section
                           </button>
                         )}
                       </div>
                     )}
+                    {note && !isDrafting ? (
+                      <p className="mt-3 flex max-w-prose gap-2 rounded-lg bg-mint px-3 py-2 text-sm text-forest">
+                        <Info className="mt-0.5 h-4 w-4 shrink-0 text-leaf" aria-hidden="true" />
+                        <span>{note}</span>
+                      </p>
+                    ) : null}
                   </li>
                 );
               })}

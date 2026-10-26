@@ -36,6 +36,28 @@ export function CitedProse({
                 </span>
               );
             }
+            if (t.type === "data") {
+              return (
+                <span
+                  key={j}
+                  className="ml-1 inline-flex translate-y-[-1px] indent-0 items-center rounded-md bg-mint px-1.5 py-0.5 align-middle font-sans text-[0.75rem] font-medium text-leaf"
+                  title="This comes from the data you uploaded."
+                >
+                  Your data
+                </span>
+              );
+            }
+            if (t.type === "add") {
+              return (
+                <span
+                  key={j}
+                  className="mx-0.5 inline-flex translate-y-[-1px] indent-0 items-center rounded-md border border-dashed border-warn px-1.5 py-0.5 align-middle font-sans text-[0.75rem] font-medium text-warn"
+                  title="Only you know this. Replace it with the real detail."
+                >
+                  Add: {t.what}
+                </span>
+              );
+            }
             const src = byId.get(t.sourceId);
             if (!src) {
               return (

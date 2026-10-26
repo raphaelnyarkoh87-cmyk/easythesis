@@ -412,3 +412,27 @@ export async function removeSource(sourceId: string) {
   invalidate();
   return { error: error ? friendly(error.message) : null };
 }
+
+/* ------------------------------------------------------------------ */
+/* Drafting                                                             */
+/* ------------------------------------------------------------------ */
+
+export interface DraftResponse {
+  paragraphs: string[];
+  notes: string;
+  stats: { citations: number; unsupported: number; removedCitations: number; placeholders: number };
+  runId: number | null;
+  engine: string;
+  skippedFiles: string[];
+}
+
+export async function draftSection(
+  projectId: string,
+  chapter: number,
+  section: string,
+  runId: number | null,
+) {
+  const res = await postJson<DraftResponse>("/api/draft", { projectId, chapter, section, runId });
+  invalidate();
+  return res;
+}
