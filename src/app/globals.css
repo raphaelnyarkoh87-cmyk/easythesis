@@ -1,26 +1,66 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/*
+  EasyThesis design tokens
+  Green and white. Forest is the brand ink, leaf is for actions,
+  sprout marks verified sources, mint is the quiet surface wash.
+*/
+@theme {
+  --color-forest: #0f3d2e;
+  --color-forest-deep: #0a2c21;
+  --color-leaf: #1e7b4f;
+  --color-leaf-hover: #17663f;
+  --color-sprout: #cfe8d6;
+  --color-mint: #f1f8f3;
+  --color-paper: #ffffff;
+  --color-ink: #17221d;
+  --color-muted: #55665d;
+  --color-line: #dde8e1;
+  --color-warn: #8a5a00;
+  --color-warn-bg: #fff6e0;
+  --color-danger: #a8321f;
+
+  --font-sans: "Instrument Sans Variable", system-ui, sans-serif;
+  --font-serif: "Source Serif 4 Variable", Georgia, serif;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  -webkit-text-size-adjust: 100%;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  font-feature-settings: "ss01";
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Visible keyboard focus everywhere */
+:focus-visible {
+  outline: 2px solid var(--color-leaf);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Thesis-style prose used for drafts and the landing demo */
+.thesis-prose {
+  font-family: var(--font-serif);
+  font-size: 1.0625rem;
+  line-height: 1.75;
+  color: var(--color-ink);
+  max-width: 68ch;
+}
+.thesis-prose p + p {
+  margin-top: 1em;
+  text-indent: 2em;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
 }

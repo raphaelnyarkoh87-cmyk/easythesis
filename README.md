@@ -1,36 +1,37 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# EasyThesis
 
-## Getting Started
+Thesis and dissertation drafting (Chapters 1 to 5) for the social sciences and humanities, built on literature retrieved from scholarly databases, with every citation checked against Crossref.
 
-First, run the development server:
+## Build stages
+
+| Stage | What it adds | Status |
+|---|---|---|
+| 1 | Feasibility research and plan | Done |
+| 2 | Interface: landing, pricing, sign in, dashboard, new thesis, chapter workspace, upgrade | Done (preview data stored in the browser) |
+| 3 | Supabase: real accounts, database, document storage, plan limits enforced on the server | Next |
+| 4 | Literature engine: OpenAlex, Semantic Scholar, Crossref verification (Consensus later) | |
+| 5 | Writing engine: chapter drafting grounded only in retrieved sources and the student's own data | |
+| 6 | Paystack: MTN MoMo, Telecel Cash, AirtelTigo Money, card and bank; 30-day Premium pass | |
+| 7 | Word export, terms, privacy policy, launch | |
+
+## Where things live
+
+- `src/lib/plans.ts`: prices and free/premium limits. Change the numbers here.
+- `src/lib/academic.ts`: disciplines, levels, referencing styles and the chapter structure.
+- `src/lib/example.ts`: the example thesis. Every source in it is a real paper with a real DOI.
+- `src/lib/demo-store.ts`: temporary browser storage, replaced by Supabase in Stage 3.
+- `src/app/`: pages. `src/app/app/` is the signed-in area.
+- `src/components/`: shared interface pieces.
+
+## Run locally
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Then open http://localhost:3000.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Design
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Green and white. Forest `#0f3d2e` for brand text, leaf `#1e7b4f` for actions, sprout `#cfe8d6` for verified-source highlights, mint `#f1f8f3` for quiet surfaces. Source Serif 4 for anything that reads like the thesis; Instrument Sans for the interface.
