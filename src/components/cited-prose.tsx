@@ -73,7 +73,7 @@ export function CitedProse({
                 type="button"
                 onClick={() => onSelectSource?.(src.id)}
                 aria-pressed={active}
-                className={`ml-1 rounded-sm px-0.5 indent-0 underline decoration-2 underline-offset-[5px] transition-colors ${
+                className={`ml-1 rounded-sm indent-0 underline decoration-2 underline-offset-[5px] transition-colors ${
                   active
                     ? "bg-sprout decoration-leaf"
                     : "decoration-sprout hover:bg-mint hover:decoration-leaf"

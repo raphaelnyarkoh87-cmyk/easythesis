@@ -7,7 +7,7 @@ export const metadata: Metadata = { title: "Pricing" };
 const QUESTIONS = [
   {
     q: "Why doesn't Premium renew automatically?",
-    a: "Mobile money wallets cannot be charged on a schedule, so Premium is a prepaid pass. We remind you by email three days before it ends, and you renew with one payment.",
+    a: "Mobile money wallets cannot be charged on a schedule, so Premium is a prepaid pass. EasyThesis reminds you when you sign in during the last three days, and you renew with one payment. Renewing early adds 30 days to the time you have left.",
   },
   {
     q: "Which payment methods can I use?",

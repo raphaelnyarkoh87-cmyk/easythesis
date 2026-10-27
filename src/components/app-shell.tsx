@@ -16,6 +16,24 @@ export function Loading({ label = "Loading" }: { label?: string }) {
   );
 }
 
+function RenewalBanner({ premiumUntil }: { premiumUntil: string }) {
+  const msLeft = new Date(premiumUntil).getTime() - Date.now();
+  const daysLeft = Math.ceil(msLeft / 86_400_000);
+  if (msLeft <= 0 || daysLeft > 3) return null;
+  const when = new Date(premiumUntil).toLocaleDateString("en-GB", { day: "numeric", month: "long" });
+  return (
+    <div className="border-b border-line bg-warn-bg">
+      <p className="mx-auto flex max-w-7xl flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2.5 text-sm text-warn sm:px-6">
+        Your Premium pass ends on {when}. After that, Chapters 2 to 5 lock until you renew. Your work
+        is kept.
+        <Link href="/app/upgrade" className="font-medium underline underline-offset-4">
+          Extend Premium
+        </Link>
+      </p>
+    </div>
+  );
+}
+
 export function AppShell({ children }: { children: React.ReactNode }) {
   const account = useAccount();
   const pathname = usePathname();
@@ -69,6 +87,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           ) : null}
         </div>
       </header>
+      {account?.plan === "premium" && account.premiumUntil ? (
+        <RenewalBanner premiumUntil={account.premiumUntil} />
+      ) : null}
       {account === undefined && !publicPath ? (
         <Loading />
       ) : account || publicPath ? (

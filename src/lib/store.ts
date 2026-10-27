@@ -436,3 +436,23 @@ export async function draftSection(
   invalidate();
   return res;
 }
+
+/* ------------------------------------------------------------------ */
+/* Payments (Paystack)                                                  */
+/* ------------------------------------------------------------------ */
+
+export type PaymentOutcome =
+  | { state: "paid"; premiumUntil: string; newlyGranted: boolean }
+  | { state: "pending"; message: string }
+  | { state: "failed"; message: string }
+  | { state: "unknown" };
+
+export async function startPremiumPayment(method: "mobile_money" | "card" | "bank") {
+  return postJson<{ authorizationUrl: string; reference: string }>("/api/paystack/initialize", { method });
+}
+
+export async function confirmPremiumPayment(reference: string) {
+  const res = await postJson<PaymentOutcome>("/api/paystack/verify", { reference });
+  if (res.data?.state === "paid") invalidate();
+  return res;
+}

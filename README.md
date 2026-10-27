@@ -11,8 +11,8 @@ Thesis and dissertation drafting (Chapters 1 to 5) for the social sciences and h
 | 3 | Supabase: real accounts, database, document storage, plan limits enforced in the database | Done |
 | 4 | Literature engine: OpenAlex, Semantic Scholar, Crossref verification (Consensus later) | Done |
 | 5 | Writing engine: chapter drafting grounded only in retrieved sources and the student's own data | Done |
-| 6 | Paystack: MTN MoMo, Telecel Cash, AirtelTigo Money, card and bank; 30-day Premium pass | Next |
-| 7 | Word export, terms, privacy policy, launch | |
+| 6 | Paystack: MTN MoMo, Telecel Cash, AirtelTigo Money, card and bank; 30-day Premium pass | Done |
+| 7 | Word export, terms, privacy policy, launch | Next |
 
 ## Where things live
 
@@ -25,15 +25,21 @@ Thesis and dissertation drafting (Chapters 1 to 5) for the social sciences and h
 - `src/lib/ai/provider.ts`: the writing engine (Gemini, Cerebras, Groq or Claude, whichever key is set).
 - `src/lib/ai/draft.ts`: section prompts and the citation checker that removes anything not in the student's sources.
 - `src/lib/server/documents.ts`: reads text from uploaded PDF, Word, Excel, CSV and text files.
+- `src/lib/server/paystack.ts`: Paystack checkout, payment confirmation and webhook checks.
 - `src/lib/server/guard.ts`: sign-in, project ownership and plan-limit checks for server routes.
 - `src/app/api/`: server routes.
 - `supabase/migrations/`: database tables and security rules. Run new files in Supabase's SQL Editor.
 - `src/app/`: pages. `src/app/app/` is the signed-in area.
 - `src/components/`: shared interface pieces.
 
-## Testing Premium before payments exist
+## Payments
 
-In Supabase, open Table Editor -> profiles, find your row, set `plan` to `premium` and `premium_until` to a future date.
+Premium is a prepaid 30-day pass paid through Paystack. The price comes from `src/lib/plans.ts` on the server.
+A payment is confirmed twice for safety: on the page the student returns to, and by Paystack's webhook.
+The database function `grant_premium` applies each payment exactly once.
+
+To give someone Premium by hand (for example a refund dispute), in Supabase open Table Editor -> profiles,
+set `plan` to `premium` and `premium_until` to the end date.
 
 ## Run locally
 
