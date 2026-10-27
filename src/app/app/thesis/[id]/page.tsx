@@ -275,7 +275,11 @@ export default function ThesisWorkspace() {
               <p className="mt-2 max-w-prose text-muted">
                 This chapter reports and interprets your findings, so it is written only from the
                 data you collected. Upload your SPSS, Stata or Excel output, coded interview
-                transcripts, or a summary of your results.
+                transcripts, or a summary of your results. Remove participants&apos; names and other
+                identifying details first.{" "}
+                <Link href="/responsible-use" className="text-leaf underline underline-offset-2">
+                  How your files are used
+                </Link>
               </p>
               {readOnly ? null : (
                 <div className="mt-5">

@@ -5,13 +5,15 @@ import "server-only";
  * Set the key(s) in Vercel; the first available provider is used and
  * the next one takes over if it is rate-limited or down.
  *
+ *   GEMINI_API_KEY     (models: GEMINI_MODEL, default gemini-3.5-flash-lite;
+ *                       optional GEMINI_FALLBACK_MODEL, tried when the first is rate-limited)
  *   CEREBRAS_API_KEY   (model: CEREBRAS_MODEL, default gpt-oss-120b)
  *   GROQ_API_KEY       (model: GROQ_MODEL, default openai/gpt-oss-120b)
  *   ANTHROPIC_API_KEY  (model: ANTHROPIC_MODEL, default claude-sonnet-5-5)
- *   AI_PROVIDER        optional: cerebras | groq | anthropic, to choose which goes first
+ *   AI_PROVIDER        optional: gemini | cerebras | groq | anthropic, to choose which goes first
  */
 
-export type ProviderId = "cerebras" | "groq" | "anthropic";
+export type ProviderId = "gemini" | "cerebras" | "groq" | "anthropic";
 
 interface Provider {
   id: ProviderId;
@@ -75,7 +77,85 @@ async function openAiCompatible(
   return text;
 }
 
+interface GeminiResponse {
+  candidates?: {
+    content?: { parts?: { text?: string; thought?: boolean }[] };
+    finishReason?: string;
+  }[];
+  promptFeedback?: { blockReason?: string };
+}
+
+async function geminiCall(model: string, req: GenerateRequest): Promise<string> {
+  let res: Response;
+  try {
+    res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,
+      {
+        method: "POST",
+        headers: {
+          "x-goog-api-key": process.env.GEMINI_API_KEY!,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          systemInstruction: { parts: [{ text: req.system }] },
+          contents: [{ role: "user", parts: [{ text: req.prompt }] }],
+          // Gemini 3 models ignore temperature, so it is not sent.
+          // Extra room because any reasoning tokens count towards this limit.
+          generationConfig: {
+            maxOutputTokens: Math.max(8192, (req.maxTokens ?? 4000) * 2),
+            responseMimeType: "application/json",
+          },
+        }),
+        signal: AbortSignal.timeout(55000),
+      },
+    );
+  } catch {
+    throw new ProviderError(`Gemini (${model}) did not respond`, true);
+  }
+  if (!res.ok) {
+    const detail = await res.text().catch(() => "");
+    throw new ProviderError(
+      `Gemini (${model}) returned ${res.status}${detail ? `: ${detail.slice(0, 200)}` : ""}`,
+      res.status === 429 || res.status >= 500 || res.status === 404,
+    );
+  }
+  const json = (await res.json()) as GeminiResponse;
+  if (json.promptFeedback?.blockReason) {
+    throw new ProviderError(`Gemini blocked the request (${json.promptFeedback.blockReason})`, false);
+  }
+  const candidate = json.candidates?.[0];
+  const text = (candidate?.content?.parts ?? [])
+    .filter((p) => !p.thought)
+    .map((p) => p.text ?? "")
+    .join("");
+  if (!text) {
+    throw new ProviderError(
+      `Gemini returned no text${candidate?.finishReason ? ` (${candidate.finishReason})` : ""}`,
+      candidate?.finishReason !== "SAFETY",
+    );
+  }
+  return text;
+}
+
 const PROVIDERS: Provider[] = [
+  {
+    id: "gemini",
+    label: "Gemini",
+    available: () => !!process.env.GEMINI_API_KEY,
+    call: async (req) => {
+      const primary = process.env.GEMINI_MODEL || "gemini-3.5-flash-lite";
+      const fallback = process.env.GEMINI_FALLBACK_MODEL;
+      try {
+        return await geminiCall(primary, req);
+      } catch (e) {
+        if (fallback && fallback !== primary && e instanceof ProviderError && e.retryable) {
+          console.error(`[ai] ${e.message}; trying ${fallback}`);
+          return geminiCall(fallback, req);
+        }
+        throw e;
+      }
+    },
+  },
   {
     id: "cerebras",
     label: "Cerebras",

@@ -21,6 +21,14 @@ const POINTS = [
     body: "EasyThesis drafts from abstracts and metadata, plus any full texts you upload. Open each paper and confirm it says what your thesis says it does.",
   },
   {
+    title: "How your work is processed",
+    body: "EasyThesis uses Google's Gemini service to draft text. The details of your thesis, your sources and the files you upload are sent to Google for each draft. On the free Gemini service that EasyThesis currently uses, Google may use this text to improve its products, and Google staff may read it. Do not upload anything you are not willing to share on those terms.",
+  },
+  {
+    title: "Protect your research participants",
+    body: "Remove names, phone numbers, addresses and any other details that could identify a participant before you upload transcripts or data. Your ethics approval may require this.",
+  },
+  {
     title: "Your data, your findings",
     body: "Chapters 4 and 5 describe the data you provide. Never ask EasyThesis to produce results you did not collect. Fabricating data is research misconduct.",
   },

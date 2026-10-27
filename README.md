@@ -22,7 +22,7 @@ Thesis and dissertation drafting (Chapters 1 to 5) for the social sciences and h
 - `src/lib/store.ts`: reading and writing data in Supabase (accounts, projects, uploads).
 - `src/lib/supabase/`: Supabase connection settings.
 - `src/lib/literature/`: OpenAlex and Semantic Scholar search, Crossref DOI checks.
-- `src/lib/ai/provider.ts`: the writing engine (Cerebras, Groq or Claude, whichever key is set).
+- `src/lib/ai/provider.ts`: the writing engine (Gemini, Cerebras, Groq or Claude, whichever key is set).
 - `src/lib/ai/draft.ts`: section prompts and the citation checker that removes anything not in the student's sources.
 - `src/lib/server/documents.ts`: reads text from uploaded PDF, Word, Excel, CSV and text files.
 - `src/lib/server/guard.ts`: sign-in, project ownership and plan-limit checks for server routes.
